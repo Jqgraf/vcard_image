@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Generador de vCard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #0f0f0f;
+      --paper: #f5f2ec;
+      --accent: #c84b2f;
+      --muted: #7a7570;
+      --border: #d6d0c8;
+      --card: #fffdf9;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 40px 16px 60px;
+    }
+
+    header {
+      max-width: 480px;
+      margin: 0 auto 36px;
+    }
+
+    header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    header p {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      max-width: 480px;
+      margin: 0 auto 16px;
+      padding: 24px;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .photo-zone {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .photo-preview {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--border);
+      object-fit: cover;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 2px solid var(--border);
+    }
+
+    .photo-preview svg { opacity: 0.4; }
+    .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+    .photo-upload-btn {
+      flex: 1;
+      border: 1.5px dashed var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .photo-upload-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    #foto { display: none; }
+
+    .field-group {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+    }
+
+    .field-group.two-col {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="url"] {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid var(--border);
+      padding: 8px 0;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    input::placeholder { color: var(--border); }
+
+    .btn-generate {
+      display: block;
+      width: 100%;
+      max-width: 480px;
+      margin: 8px auto 0;
+      padding: 16px;
+      background: var(--ink);
+      color: #fff;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: background 0.2s;
+    }
+
+    .btn-generate:hover { background: var(--accent); }
+
+    .notice {
+      max-width: 480px;
+      margin: 16px auto 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.6;
+      padding: 12px 16px;
+      border-left: 3px solid var(--accent);
+      background: #fff7f5;
+    }
+
+    .notice strong { color: var(--accent); }
+
+    @media (max-width: 420px) {
+      .field-group.two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Generador de vCard<br>con imagen embebida</h1>
+  <p>Compatible con Android e iOS — By Albama</p>
+</header>
+
+<!-- FOTO -->
+<div class="card">
+  <div class="section-label">Foto de contacto</div>
+  <div class="photo-zone">
+    <div class="photo-preview" id="preview">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5">
+        <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+    </div>
+    <button class="photo-upload-btn" onclick="document.getElementById('foto').click()">
+      Seleccionar imagen…
+    </button>
+    <input type="file" id="foto" accept="image/*">
+  </div>
+</div>
+
+<!-- IDENTIDAD -->
+<div class="card">
+  <div class="section-label">Identidad</div>
+  <div class="field-group two-col">
+    <div class="field">
+      <label>Nombres</label>
+      <input type="text" id="nombres" placeholder="Juan">
+    </div>
+    <div class="field">
+      <label>Apellidos</label>
+      <input type="text" id="apellidos" placeholder="Pérez">
+    </div>
+  </div>
+  <div class="field-group" style="margin-top:10px">
+    <div class="field">
+      <label>Cargo</label>
+      <input type="text" id="cargo" placeholder="Gerente de Proyectos">
+    </div>
+    <div class="field">
+      <label>Empresa</label>
+      <input type="text" id="empresa" placeholder="Acme S.A.">
+    </div>
+  </div>
+</div>
+
+<!-- DIRECCIÓN -->
+<div class="card">
+  <div class="section-label">Dirección</div>
+  <div class="field-group">
+    <div class="field">
+      <label>Calle / Dirección</label>
+      <input type="text" id="direccion" placeholder="Av. Principal 123">
+    </div>
+  </div>
+  <div class="field-group two-col" style="margin-top:10px">
+    <div class="field">
+      <label>Ciudad</label>
+      <input type="text" id="ciudad" placeholder="Lima">
+    </div>
+    <div class="field">
+      <label>Código postal</label>
+      <input type="text" id="codigoPostal" placeholder="15001">
+    </div>
+  </div>
+  <div class="field-group" style="margin-top:10px">
+    <div class="field">
+      <label>País</label>
+      <input type="text" id="pais" placeholder="Perú">
+    </div>
+  </div>
+</div>
+
+<!-- CONTACTO -->
+<div class="card">
+  <div class="section-label">Teléfonos</div>
+  <div class="field-group">
+    <div class="field">
+      <label>Teléfono trabajo</label>
+      <input type="text" id="telefono" placeholder="+51 1 234 5678">
+    </div>
+    <div class="field">
+      <label>Anexo</label>
+      <input type="text" id="anexo" placeholder="123">
+    </div>
+    <div class="field">
+      <label>Celular</label>
+      <input type="text" id="celular" placeholder="+51 999 888 777">
+    </div>
+  </div>
+</div>
+
+<!-- DIGITAL -->
+<div class="card">
+  <div class="section-label">Digital</div>
+  <div class="field-group">
+    <div class="field">
+      <label>Correo electrónico</label>
+      <input type="email" id="correo" placeholder="juan@empresa.com">
+    </div>
+    <div class="field">
+      <label>Página web</label>
+      <input type="url" id="web" placeholder="https://empresa.com">
+    </div>
+  </div>
+</div>
+
+<button class="btn-generate" onclick="generarVCard()">Crear archivo .vcf</button>
+
+<div class="notice">
+  <strong>iOS:</strong> Abre el .vcf desde la app <em>Archivos</em> o desde Safari. <br> <strong>Android:</strong> Funciona desde cualquier gestor de archivos.
+</div>
+
+<script>
+  /* ── Preview de foto ── */
+  document.getElementById('foto').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const prev = document.getElementById('preview');
+      prev.innerHTML = `<img src="${e.target.result}" alt="preview">`;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  /* ── Helpers ── */
+  function limpiar(id) {
+    return (document.getElementById(id).value || '')
+      .replace(/[\n\r;,]/g, ' ')
+      .trim();
+  }
+
+  /* Fold lines >75 chars — requerido por RFC 2426 (vCard 3.0) e iOS */
+  function foldLine(line) {
+    const limit = 75;
+    if (line.length <= limit) return line;
+    let folded = '';
+    while (line.length > limit) {
+      folded += line.substring(0, limit) + '\r\n ';
+      line = line.substring(limit);
+    }
+    return folded + line;
+  }
+
+  /* Redimensionar imagen antes de embeber (max 400px) para evitar archivos enormes */
+  function resizeImage(file, maxDim, quality, callback) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else       { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const b64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+        callback(b64);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /* ── Generador principal ── */
+  function generarVCard() {
+    const fileInput = document.getElementById('foto');
+    const file = fileInput.files[0];
+
+    if (!file) { alert('Selecciona una foto primero.'); return; }
+
+    resizeImage(file, 400, 0.75, function (base64Image) {
+      const nombres   = limpiar('nombres');
+      const apellidos = limpiar('apellidos');
+      const cargo     = limpiar('cargo');
+      const empresa   = limpiar('empresa');
+      const direccion = limpiar('direccion');
+      const ciudad    = limpiar('ciudad');
+      const cp        = limpiar('codigoPostal');
+      const pais      = limpiar('pais');
+      const telefono  = limpiar('telefono');
+      const anexo     = limpiar('anexo');
+      const celular   = limpiar('celular');
+      const correo    = limpiar('correo');
+      const web       = limpiar('web');
+
+      const lines = [];
+
+      lines.push('BEGIN:VCARD');
+      lines.push('VERSION:3.0');
+      lines.push(`N:${apellidos};${nombres};;;`);
+      lines.push(`FN:${nombres} ${apellidos}`);
+      if (empresa) lines.push(`ORG:${empresa}`);
+      if (cargo)   lines.push(`TITLE:${cargo}`);
+
+      if (direccion || ciudad || cp || pais) {
+        lines.push(`ADR;TYPE=WORK:;;${direccion};${ciudad};;${cp};${pais}`);
+      }
+
+      if (telefono) lines.push(`TEL;TYPE=WORK,VOICE:${telefono}`);
+      if (anexo)    lines.push(`TEL;TYPE=WORK,VOICE,x-extension:${anexo}`);
+      if (celular)  lines.push(`TEL;TYPE=CELL,VOICE:${celular}`);
+      if (correo)   lines.push(`EMAIL;TYPE=INTERNET,WORK:${correo}`);
+      if (web)      lines.push(`URL;TYPE=WORK:${web}`);
+
+      /* Foto: fold obligatorio para iOS */
+      const photoHeader = 'PHOTO;ENCODING=b;TYPE=JPEG:';
+      const photoLine = photoHeader + base64Image;
+      lines.push(foldLine(photoLine));
+
+      lines.push('END:VCARD');
+
+      /* Unir con CRLF estricto */
+      const vcard = lines.join('\r\n');
+
+      const nombreArchivo = `${nombres}-${apellidos}.vcf`.replace(/\s+/g, '_');
+      descargarVCard(vcard, nombreArchivo);
+    });
+  }
+
+  function descargarVCard(contenido, nombreArchivo) {
+    /* text/x-vcard es más compatible con iOS que text/vcard */
+    const blob = new Blob([contenido], { type: 'text/x-vcard;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+</script>
+
+</body>
+</html>
